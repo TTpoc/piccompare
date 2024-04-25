@@ -1,0 +1,90 @@
+#include "Wire.h"
+#include "GyverTimers.h"
+
+#define EEPROM_I2C_ADDRESS 0x50
+#define READ_WRITE_BUTTOM 5       // 0 - write, 1 - read
+#define MAX_ADDRESS_EEPROM 65535
+#define PERIOD 5000               // us 5ms = 5000us
+
+unsigned long tDelay;
+int address = 0;
+byte val = 0;
+bool flag = false;
+
+void setup() 
+{
+  Wire.begin();
+  Serial.begin(9600);
+  Timer1.setPeriod(PERIOD);       
+  analogReference(EXTERNAL);
+  pinMode(READ_WRITE_BUTTOM, INPUT_PULLUP);
+  
+  delay(100);
+  
+  if(digitalRead(READ_WRITE_BUTTOM))
+  {
+    Timer1.disableISR(CHANNEL_A);
+  }
+  else
+  {
+     Timer1.enableISR(CHANNEL_A);
+  }
+
+//  int PERIODus = PERIOD/1000;
+  
+// writeAddress(address, val); 
+//   byte readVal = readAddress(address);
+  
+//  Serial.print("The returned value is ");
+//  Serial.println(readVal);
+
+}
+
+void loop() 
+{
+  
+  if(flag && !digitalRead(READ_WRITE_BUTTOM))
+  {
+    for(address; address < MAX_ADDRESS_EEPROM; address++)
+    {
+      writeAddress(address, val);
+      flag = false; 
+    }
+  }
+
+  if(digitalRead(READ_WRITE_BUTTOM))
+  {
+    for(address; address < MAX_ADDRESS_EEPROM; address++)
+    {
+      byte val = readAddress(address);
+      Serial.println(val,DEC);
+    }
+  }
+}
+
+void writeAddress(int address, byte val)
+{
+  Wire.beginTransmission(EEPROM_I2C_ADDRESS);
+  Wire.write((int)(address >> 8));   // MSB
+  Wire.write((int)(address & 0xFF)); // LSB
+  Wire.write(val);
+//  Wire.endTransmission();
+}
+
+byte readAddress(int address)
+{
+  byte rData = 0xFF;
+  Wire.beginTransmission(EEPROM_I2C_ADDRESS);
+  Wire.write((int)(address >> 8));   // MSB
+  Wire.write((int)(address & 0xFF)); // LSB
+  Wire.endTransmission();  
+  Wire.requestFrom(EEPROM_I2C_ADDRESS, 1);  
+  rData =  Wire.read();
+  return rData;
+}
+
+ISR(TIMER1_A)
+{ 
+  val = (byte)analogRead(A0);
+  flag = true;
+}
